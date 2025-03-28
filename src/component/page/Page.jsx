@@ -145,7 +145,7 @@ const Page = () => {
 
           {/* Back Button */}
           <div className="left-cont">
-            <NavLink to="/iMoviearea/" className="download-btn">
+            <NavLink to="/" className="download-btn">
               Back
             </NavLink>
           </div>
