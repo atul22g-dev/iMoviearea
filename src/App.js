@@ -7,8 +7,8 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/iMoviearea/" element={<Home />} />
-        <Route path="/iMoviearea/page" element={<Page />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/page" element={<Page />} />
       </Routes>
     </BrowserRouter>
   );

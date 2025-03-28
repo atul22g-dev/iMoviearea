@@ -3,20 +3,24 @@ import { useGlobalContext } from "../../Helpers/context";
 
 const Download = () => {
   const { Sdownload } = useGlobalContext();
+
+  // Remove duplicates by using a Set
+  const uniqueDownloads = Array.from(
+    new Map(Sdownload.map((item) => [item.Download, item])).values()
+  );
+
   return (
     <>
       <div className="center-subheading" id="Downloads_container">
-        {Sdownload.map((curElem) => {
+        {uniqueDownloads.map((curElem) => {
           const { Download, Download_title, Key } = curElem;
           return (
-            <>
-              <h3 Key={Key} class="center-subheading">
-                {Download_title}
-              </h3>
-              <a href={Download} class="download-btn">
+            <div className="downloadCon" key={Key}>
+              <h3 className="center-subheading">{Download_title}</h3>
+              <a href={Download} className="download-btn">
                 Download
               </a>
-            </>
+            </div>
           );
         })}
       </div>

@@ -2,13 +2,7 @@ import React, { useContext, useReducer, useEffect } from "react";
 import reducer from "./reducer";
 
 const AppContext = React.createContext();
-
-// Search queries
-const url = window.location.search;
-const urlquery = new URLSearchParams(url);
-const urlKey = urlquery.get("Key");
-
-const API = `https://atugatran-projects.github.io/_Apis/Movies/index.json`;
+const API = `https://atualapis.pages.dev/Movies/index.json`;
 
 const intialState = {
   Amovies: [],
@@ -31,33 +25,30 @@ const AppProvider = ({ children }) => {
   };
 
   const getSingleProjects = async (query) => {
-    var Single;
-    var Downloads;
     try {
       const res = await fetch(API);
       const data = await res.json();
-      data.map((i) => {
-        const { Key } = i;
-        let ApiId = Key;
-        // console.log(ApiId);
-        if (ApiId === query) {
-          Single = data[ApiId - 1];
-          Downloads = data[query - 1].downloads;
-          // console.log(Downloads);
-        }
-      });
-      dispatch({ type: "GET_SINGLE_PROJECTS", payload: Single });
-      dispatch({ type: "GET_DOWNLOAD_PROJECTS", payload: Downloads });
+  
+      // Find the movie with the matching Key
+      const Single = data.find((item) => item.Key === query);
+  
+      if (Single) {
+        dispatch({ type: "GET_SINGLE_PROJECTS", payload: Single });
+        dispatch({ type: "GET_DOWNLOAD_PROJECTS", payload: Single.downloads || [] });
+      } else {
+        console.warn("Movie not found with Key:", query);
+      }
     } catch (error) {
-      // console.log(error);
+      console.error("Error fetching single project:", error);
     }
   };
-
-  // to call the api
+  
+  // Call API only once when the component mounts
   useEffect(() => {
     getProjects(API);
-    // getSingleProjects(API);
-  }, [1000]);
+  }, []);  // Empty dependency array ensures it runs only once
+  
+  
 
   return (
     <AppContext.Provider value={{ ...state, getSingleProjects }}>

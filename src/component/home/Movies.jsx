@@ -9,7 +9,7 @@ const Movies = () => {
     const { Poster, Name, Key } = i;
     const movieName = Name.substring(0, 15);
     const shortName = movieName.length > 13 ? `${movieName}...` : movieName;
-    const Query = "/iMoviearea/Page?Key=" + Key;
+    const Query = "/Page?Key=" + Key;
     return (
       <NavLink to={Query} className="card_con" key={Key}>
         <div className="card">
