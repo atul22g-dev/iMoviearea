@@ -1,65 +1,103 @@
-import React, { useContext, useReducer, useEffect } from "react";
+import React, { useContext, useReducer, useEffect, useCallback, useRef, useMemo } from "react";
 import reducer from "./reducer";
 
 const AppContext = React.createContext();
-const API = `https://atualapis.pages.dev/Movies/index.json`;
+const API = `https://apis-atual-dev.vercel.app/api/movies`;
+const API_KEY = import.meta.env.VITE_X_API_KEY;
 
-const intialState = {
-  Amovies: [],
-  Smovies: [],
-  Sdownload: [],
-};
+// Cache for movie data to avoid redundant fetches
+let movieCache = null;
+let singleCache = {};
+
+const initialState = { Amovies: [], Smovies: {} };
 
 const AppProvider = ({ children }) => {
-  const [state, dispatch] = useReducer(reducer, intialState);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const abortRef = useRef(null);
 
-  //  to get the api data
-  const getProjects = async (url) => {
+  const getProjects = useCallback(async (url) => {
+    // Return cached data if available
+    if (movieCache) {
+      dispatch({ type: "GET_PROJECTS", payload: movieCache });
+      return;
+    }
+
+    // Abort previous request
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: { "X-API-Key": API_KEY },
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      movieCache = data; // Cache the result
       dispatch({ type: "GET_PROJECTS", payload: data });
     } catch (error) {
-      // console.log(error);
-    }
-  };
-
-  const getSingleProjects = async (query) => {
-    try {
-      const res = await fetch(API);
-      const data = await res.json();
-  
-      // Find the movie with the matching Key
-      const Single = data.find((item) => item.Key === query);
-  
-      if (Single) {
-        dispatch({ type: "GET_SINGLE_PROJECTS", payload: Single });
-        dispatch({ type: "GET_DOWNLOAD_PROJECTS", payload: Single.downloads || [] });
-      } else {
-        console.warn("Movie not found with Key:", query);
+      if (error.name !== "AbortError") {
+        console.warn("Failed to fetch movies:", error.message);
       }
-    } catch (error) {
-      console.error("Error fetching single project:", error);
     }
-  };
-  
-  // Call API only once when the component mounts
+  }, []);
+
+  const getSingleProjects = useCallback(
+    async (query) => {
+      // Return cached single if available
+      if (singleCache[query]) {
+        const cached = singleCache[query];
+        dispatch({ type: "GET_SINGLE_PROJECTS", payload: cached });
+        return;
+      }
+
+      try {
+        const res = await fetch(API, {
+          headers: { "X-API-Key": API_KEY },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const single = data.find((item) => String(item.Key) === String(query));
+
+        if (single) {
+          singleCache[query] = single; // Cache single result
+          dispatch({ type: "GET_SINGLE_PROJECTS", payload: single });
+        }
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          console.error("Error fetching single project:", error.message);
+        }
+      }
+    },
+    []
+  );
+
+  // Fetch movie list on mount
   useEffect(() => {
     getProjects(API);
-  }, []);  // Empty dependency array ensures it runs only once
-  
-  
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, [getProjects]);
+
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(
+    () => ({
+      Amovies: state.Amovies,
+      Smovies: state.Smovies,
+      getSingleProjects,
+    }),
+    [state.Amovies, state.Smovies, getSingleProjects]
+  );
 
   return (
-    <AppContext.Provider value={{ ...state, getSingleProjects }}>
+    <AppContext.Provider value={value}>
       {children}
     </AppContext.Provider>
   );
 };
 
-// gloabal custom hookz
-const useGlobalContext = () => {
-  return useContext(AppContext);
-};
+const useGlobalContext = () => useContext(AppContext);
 
 export { AppProvider, useGlobalContext };
